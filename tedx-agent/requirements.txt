@@ -1,0 +1,7 @@
+google-adk
+google-generativeai
+fastapi
+uvicorn[standard]
+duckduckgo-search
+httpx
+beautifulsoup4
