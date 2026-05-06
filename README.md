@@ -62,12 +62,14 @@ App que scrapa automáticamente eventos TEDx futuros desde ted.com y los almacen
 | Scraping | Crawl4AI (servidor propio) |
 | Deploy | Vercel |
 | Cron | Vercel Cron Jobs (cada 2 días) |
+| Secrets | Doppler |
 
 ### Infraestructura
 - **DB:** Neon PostgreSQL — `ep-raspy-tooth-aih7gqoo.c-4.us-east-1.aws.neon.tech`
 - **Crawl4AI:** `http://144.22.186.186:11235` (puede estar caído, verificar antes de usar)
 - **Cron:** `0 6 */2 * *` → `GET /api/cron/scrape-tedx`
 - **Enrichment Agent:** `https://crawl4ai.1kairos.com/enrich`
+- **Secrets:** Doppler proyecto `marie-incontrera`, config `prd`
 
 ### Archivos clave
 - `lib/db.ts` — conexión Neon
@@ -77,10 +79,19 @@ App que scrapa automáticamente eventos TEDx futuros desde ted.com y los almacen
 - `app/page.tsx` — frontend con filtros
 - `OBJETIVO.md` — documentación técnica detallada
 
+### Setup local
+```bash
+# Los secrets vienen de Doppler, no hay .env.local
+doppler run -- npm run dev
+
+# Correr migraciones
+doppler run -- npm run migrate
+```
+
 ### Disparar scraping manualmente
 ```bash
 curl -X GET "https://marie-incontrera.vercel.app/api/cron/scrape-tedx" \
-  -H "Authorization: Bearer $CRON_SECRET"
+  -H "Authorization: Bearer $(doppler secrets get CRON_SECRET --project marie-incontrera --config prd --plain)"
 ```
 
 ### Estado
@@ -89,6 +100,7 @@ curl -X GET "https://marie-incontrera.vercel.app/api/cron/scrape-tedx" \
 - [x] Dashboard con filtros (nombre, país, tipo)
 - [x] Enriquecimiento manual: deadline, formulario, contacto, redes sociales
 - [x] Integración con agente Python vía Cloudflare Tunnel
+- [x] Secrets centralizados en Doppler
 
 ---
 

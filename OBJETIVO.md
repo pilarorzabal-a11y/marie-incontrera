@@ -114,15 +114,42 @@ Campos de enriquecimiento:
 
 ---
 
-## Variables de entorno necesarias
+## Secrets (gestionados con Doppler)
 
-```
-DATABASE_URL      -> Cadena de conexion Neon (PostgreSQL)
-CRON_SECRET       -> Token para autenticar el endpoint cron
-CRAWL4AI_URL      -> URL del servidor Crawl4AI (http://144.22.186.186:11235)
-CRAWL4AI_TOKEN    -> Token de acceso a Crawl4AI
-TEDX_AGENT_URL    -> URL base usada por Vercel para enrich (`https://crawl4ai.1kairos.com`)
-TEDX_AGENT_TOKEN  -> Token Bearer para autenticar contra el agente
+Los secrets **no se usan via `.env.local`**. Se gestionan centralmente en Doppler.
+
+- **Proyecto Doppler:** `marie-incontrera`
+- **Config:** `prd`
+- **Workspace:** `pilarorzabal`
+
+### Secrets almacenados
+
+| Secret           | Descripcion                                                    |
+|------------------|----------------------------------------------------------------|
+| `DATABASE_URL`   | Cadena de conexion Neon (PostgreSQL, con pooler)               |
+| `CRON_SECRET`    | Token para autenticar el endpoint cron                         |
+| `CRAWL4AI_URL`   | URL del servidor Crawl4AI (`http://144.22.186.186:11235`)      |
+| `CRAWL4AI_TOKEN` | Token de acceso a Crawl4AI                                     |
+
+> `TEDX_AGENT_URL` y `TEDX_AGENT_TOKEN` estan configurados directamente en Vercel (no en Doppler).
+
+### Comandos Doppler utiles
+
+```bash
+# Ver todos los secrets
+doppler secrets --project marie-incontrera --config prd
+
+# Agregar o actualizar un secret
+doppler secrets set NOMBRE="valor" --project marie-incontrera --config prd
+
+# Correr el servidor de dev con secrets inyectados
+doppler run -- npm run dev
+
+# Correr migracion con secrets inyectados
+doppler run -- npm run migrate
+
+# Verificar que Doppler esta configurado correctamente
+doppler configure debug
 ```
 
 ---
@@ -152,7 +179,8 @@ El `INSERT ... ON CONFLICT DO UPDATE` garantiza que:
 - [x] Endpoint cron con autenticacion
 - [x] Cron configurado cada 2 dias en Vercel
 - [x] Deploy en Vercel - https://marie-incontrera.vercel.app
-- [x] Env vars configuradas en Vercel (DATABASE_URL, CRON_SECRET, CRAWL4AI_URL, CRAWL4AI_TOKEN, TEDX_AGENT_URL, TEDX_AGENT_TOKEN)
+- [x] Env vars configuradas en Vercel (TEDX_AGENT_URL, TEDX_AGENT_TOKEN)
+- [x] Secrets centralizados en Doppler (DATABASE_URL, CRON_SECRET, CRAWL4AI_URL, CRAWL4AI_TOKEN)
 - [x] Frontend para visualizar eventos (grilla responsiva + filtros por nombre/pais/tipo)
 - [x] Scraping funcionando (confirmado 2026-02-19)
 - [x] Enriquecimiento manual por lote (SSE) con estado por evento
@@ -182,15 +210,18 @@ Opciones:
 
 ## Notas operativas
 
-- Para cambiar env vars en Vercel: `printf "valor" | vercel env add NOMBRE production --force` y luego redeployar
-- El `CRON_SECRET` tambien esta guardado en `.env.local`
+- Los secrets del proyecto estan en Doppler (`marie-incontrera / prd`). No hay `.env.local`.
+- Para agregar o cambiar un secret: `doppler secrets set NOMBRE="valor" --project marie-incontrera --config prd`
+- Para cambiar env vars en Vercel (TEDX_AGENT_URL, TEDX_AGENT_TOKEN): `printf "valor" | vercel env add NOMBRE production --force` y luego redeployar
+- Para correr localmente: `doppler run -- npm run dev`
 
 ---
 
-## CLI disponibles en este entorno (confirmado 2026-02-19)
+## CLI disponibles en este entorno (actualizado 2026-05-06)
 
 - `vercel` -> `Vercel CLI 50.18.2`
 - `neon` -> `2.20.2`
+- `doppler` -> `3.76.0` (autenticado como `pilarorzabal`)
 - `oci` -> `3.74.1` (instalado, pero sin `~/.oci/config` en esta maquina)
 
 ---
