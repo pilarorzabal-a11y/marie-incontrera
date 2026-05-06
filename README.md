@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Marie Incontrera — TEDx Toolkit
 
-## Getting Started
+Dos herramientas para gestionar aplicaciones como speaker de TEDx.
 
-First, run the development server:
+---
 
+## 1. TEDx Deadline Tracker (Web App)
+
+**URL:** https://tedx-deadline-tracker.pilar-orzabal.workers.dev
+
+App web para visualizar y gestionar deadlines de aplicación a eventos TEDx.
+
+### Qué hace
+- Carga un archivo CSV o Excel (`.xlsx`) con eventos TEDx
+- Muestra una tabla con estado de urgencia por deadline (Crítico ≤7d, Pronto ≤30d, OK ≤90d, Futuro)
+- Exporta un archivo `.ics` para importar en Google Calendar con recordatorios
+- Envía un resumen al canal de Slack vía Incoming Webhook
+
+### Cómo usar
+1. Entrar a la URL de arriba
+2. Subir el archivo `TEDxMASTER.xlsx` (o exportarlo como CSV)
+3. Usar los filtros para ver eventos por urgencia
+4. Exportar al calendar o enviar a Slack
+
+### Columnas que lee del archivo
+| Columna | Descripción |
+|---|---|
+| `DEADLINE` | Fecha límite de aplicación |
+| `NAME` | Nombre del evento |
+| `CITY` | Ciudad |
+| `STATE` | Estado/Provincia/País |
+| `THEME` | Tema del evento |
+| `TYPE` | Tipo (Standard, University, Women, Salon) |
+| `WEBSITE` | Sitio web oficial |
+| `SUBMISSION FORMS` | Link al formulario de aplicación |
+| `CONTACT` | Email de contacto |
+
+### Stack
+- Cloudflare Worker (sin servidor, sin base de datos)
+- SheetJS para leer Excel
+- Todo el procesamiento ocurre en el browser del usuario
+
+### Deploy
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd tedx-tracker-worker
+npx wrangler deploy
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 2. TEDx Scraper + Dashboard (Next.js)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**URL:** https://marie-incontrera.vercel.app
 
-## Learn More
+App que scrapa automáticamente eventos TEDx futuros desde ted.com y los almacena en base de datos.
 
-To learn more about Next.js, take a look at the following resources:
+### Stack
+| Capa | Tecnología |
+|---|---|
+| Framework | Next.js 16 (App Router) + TypeScript |
+| Base de datos | Neon (PostgreSQL serverless) |
+| Scraping | Crawl4AI (servidor propio) |
+| Deploy | Vercel |
+| Cron | Vercel Cron Jobs (cada 2 días) |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Infraestructura
+- **DB:** Neon PostgreSQL — `ep-raspy-tooth-aih7gqoo.c-4.us-east-1.aws.neon.tech`
+- **Crawl4AI:** `http://144.22.186.186:11235` (puede estar caído, verificar antes de usar)
+- **Cron:** `0 6 */2 * *` → `GET /api/cron/scrape-tedx`
+- **Enrichment Agent:** `https://crawl4ai.1kairos.com/enrich`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Archivos clave
+- `lib/db.ts` — conexión Neon
+- `lib/crawl4ai.ts` — cliente Crawl4AI con polling async
+- `lib/tedx-scraper.ts` — scraper paginado de ted.com/tedx/events
+- `app/api/cron/scrape-tedx/route.ts` — endpoint cron
+- `app/page.tsx` — frontend con filtros
+- `OBJETIVO.md` — documentación técnica detallada
 
-## Deploy on Vercel
+### Disparar scraping manualmente
+```bash
+curl -X GET "https://marie-incontrera.vercel.app/api/cron/scrape-tedx" \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Estado
+- [x] Scraper automático cada 2 días
+- [x] Base de datos Neon con deduplicación por slug
+- [x] Dashboard con filtros (nombre, país, tipo)
+- [x] Enriquecimiento manual: deadline, formulario, contacto, redes sociales
+- [x] Integración con agente Python vía Cloudflare Tunnel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Repositorio
+https://github.com/pilarorzabal-a11y/marie-incontrera
