@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
           ${event.url},
           ${JSON.stringify(event.raw_data)}
         )
-        ON CONFLICT (slug) DO UPDATE SET
+       ON CONFLICT (source, slug) DO UPDATE SET
           name       = EXCLUDED.name,
           event_date = EXCLUDED.event_date,
           city       = EXCLUDED.city,
