@@ -67,24 +67,58 @@ function extractLocations(html: string): Array<{ city: string; country: string }
   return results;
 }
 
+// Sleep helper
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Random delay between min and max ms to avoid detection
+const randomDelay = (min: number, max: number) =>
+  sleep(Math.floor(Math.random() * (max - min + 1)) + min);
+
 const MAX_PAGES = 50;
+const MAX_RETRIES = 3;
 
 export async function scrapeTedxEvents(): Promise<TedxEvent[]> {
   const allEvents: TedxEvent[] = [];
   let pageIndex = 1;
   let hasMore = true;
+  let consecutiveErrors = 0;
 
   while (hasMore && pageIndex <= MAX_PAGES) {
     const url = `https://www.ted.com/tedx/events?when=future&page=${pageIndex}`;
     console.log(`Scraping page ${pageIndex}: ${url}`);
 
-    const result = await crawlUrl(url);
+    // Retry logic for 429 errors
+    let result = null;
+    let retries = 0;
+    while (retries < MAX_RETRIES) {
+      result = await crawlUrl(url);
+      if (result.success) break;
 
-    if (!result.success || !result.result) {
-      console.error(`Failed to scrape page ${pageIndex}:`, result.error);
-      break;
+      // If 429, wait longer before retrying
+      if (result.error?.includes("429")) {
+        const waitMs = 10000 * (retries + 1); // 10s, 20s, 30s
+        console.log(`Rate limited on page ${pageIndex}, waiting ${waitMs/1000}s before retry ${retries + 1}/${MAX_RETRIES}...`);
+        await sleep(waitMs);
+        retries++;
+      } else {
+        break; // Other error, don't retry
+      }
     }
 
+    if (!result || !result.success || !result.result) {
+      console.error(`Failed to scrape page ${pageIndex}:`, result?.error);
+      consecutiveErrors++;
+      if (consecutiveErrors >= 3) {
+        console.log("Too many consecutive errors, stopping.");
+        break;
+      }
+      // Wait before moving to next page
+      await sleep(5000);
+      pageIndex++;
+      continue;
+    }
+
+    consecutiveErrors = 0;
     const { tables, links, cleaned_html } = result.result;
     const table = tables?.[0];
 
@@ -148,7 +182,9 @@ export async function scrapeTedxEvents(): Promise<TedxEvent[]> {
     }
 
     pageIndex++;
-    await new Promise((r) => setTimeout(r, 500));
+
+    // Random delay between 2 and 5 seconds between pages to avoid 429
+    await randomDelay(2000, 5000);
   }
 
   return allEvents;
